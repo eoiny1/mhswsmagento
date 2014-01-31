@@ -1,0 +1,4 @@
+mhswsmagento
+============
+
+MHSWS Magento Connector
