@@ -20,7 +20,7 @@
 					<comment>        
 					  <![CDATA[
 						<div style="padding:10px;background-color:#fff;border:1px solid #ddd;margin-bottom:7px;">
-						This module was developed by <a href="http://www.belvg.com" target="_blank">www.BelVG.com</a>.
+						This module [v.1.0.7] was developed by <a href="http://www.belvg.com" target="_blank">www.BelVG.com</a>.
 						For docs & examples refer to the BelVG <a href="http://www.belvg.com" target="_blank">web site</a>.
 						<br/>We have the largest selections of  <a href="http://store.belvg.com/extensions.html" target="_blank">extensions</a> and <a href="http://store.belvg.com/themes.html" target="_blank">themes</a> on Magento.
 						</div>
@@ -65,6 +65,7 @@
                             <comment>
                                 <![CDATA[by default: 10800 (in seconds = 3 hour)]]>
                             </comment>
+                            <default>10800</default>
                             <frontend_type>text</frontend_type>
                             <sort_order>14</sort_order>
                             <show_in_default>1</show_in_default>
@@ -72,6 +73,18 @@
                             <show_in_store>1</show_in_store>
                             <validate>required-entry validate-alphanum</validate>
                         </context_livetime>
+                        <cron_email translate="label comment">
+                            <label>Email</label>
+                            <comment>
+                                <![CDATA[test email for cron job]]>
+                            </comment>
+                            <frontend_type>text</frontend_type>
+                            <sort_order>16</sort_order>
+                            <show_in_default>1</show_in_default>
+                            <show_in_website>1</show_in_website>
+                            <show_in_store>1</show_in_store>
+                            <validate>required-entry validate-email</validate>
+                        </cron_email>
                         <import_data translate="label comment">
                             <label></label>
                             <comment><![CDATA[

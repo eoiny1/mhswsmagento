@@ -19,17 +19,18 @@ class Belvg_Import_Model_Connector extends Mage_Core_Model_Abstract
         $this->access_identifier = Mage::getStoreConfig('import/settings/access_identifier');
         $this->secret_key = Mage::getStoreConfig('import/settings/secret_key');
         $this->keyword = Mage::getStoreConfig('import/settings/keyword');
+        //Mage::getStoreConfig('mhsws/context/value') //Mage::getStoreConfig('mhsws/context/time')
 
-        if (Mage::getStoreConfig('mhsws/context/value')) {
+        if (Mage::getSingleton('core/session')->getMhswsContextValue()) {
             $now = strtotime(date(self::DATE_FORMAT));
-            $context_time = strtotime(Mage::getStoreConfig('mhsws/context/time'));
+            $context_time = strtotime(Mage::getSingleton('core/session')->getMhswsContextTime());
             if (Mage::getStoreConfig('import/settings/context_livetime') < ($now - $context_time)) {
                 $this->log[] = 'Build new context...';
                 $this->context = $this->buildCache();
             } else {
-                $this->log[] = 'Load saved context... [' . Mage::getStoreConfig('mhsws/context/value') . ']';
+                $this->log[] = 'Load saved context... [' . Mage::getSingleton('core/session')->getMhswsContextValue() . ']';
                 //load saved context
-                $this->context = Mage::getStoreConfig('mhsws/context/value');
+                $this->context = Mage::getSingleton('core/session')->getMhswsContextValue();
             }
         } else {
             //generate new context
@@ -47,9 +48,16 @@ class Belvg_Import_Model_Connector extends Mage_Core_Model_Abstract
         $url = self::BUILD_CACHE_URL . '?' . http_build_query($url_params);
         $result = $this->runRequest($url);
 
+        if (isset($result->reason)) {
+            $this->log[] = 'Seems something went wrong: ' . $result->reason;
+            Mage::Log('Seems something went wrong: ' . $result->reason, NULL, 'mhsws_connector.log');
+        }
+
         if (isset($result->context)) {
-            Mage::getModel('core/config')->saveConfig('mhsws/context/value', $result->context);
-            Mage::getModel('core/config')->saveConfig('mhsws/context/time', date(self::DATE_FORMAT));
+            /*Mage::getModel('core/config')->saveConfig('mhsws/context/value', $result->context);
+            Mage::getModel('core/config')->saveConfig('mhsws/context/time', date(self::DATE_FORMAT));*/
+            Mage::getSingleton('core/session')->setMhswsContextValue($result->context);
+            Mage::getSingleton('core/session')->setMhswsContextTime(date(self::DATE_FORMAT));
 
             return $result->context;
         } else {

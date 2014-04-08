@@ -2,7 +2,7 @@
 
 class Belvg_Import_IndexController extends Mage_Core_Controller_Front_Action
 {
-    const CACHE_LIMIT = 5;
+    const CACHE_LIMIT = 50;
     const CONFIGURABLE_LIMIT = 5;
 
     public function update_qtyAction() {

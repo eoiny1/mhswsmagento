@@ -2,7 +2,7 @@
 <config>
     <modules>
         <Belvg_Import>
-            <version>1.0.1</version>
+            <version>1.0.7</version>
         </Belvg_Import>
     </modules>
     <frontend>
@@ -78,17 +78,26 @@
                 </setup>
             </import_setup>
         </resources>
+        <template>
+            <email>
+                <test_mhsws_email_template>
+                    <label>Alert MHSWS Cron job</label>
+                    <file>belvg/mhsws_cron.html</file>
+                    <type>html</type>
+                </test_mhsws_email_template>
+            </email>
+        </template>
     </global>
     <crontab>
         <jobs>
-            <!--<MHSWSConnector_ProductsUpdate>
+            <MHSWSConnector_ProductsUpdate>
                 <schedule>
                     <cron_expr>59 23 * * *</cron_expr>
                 </schedule>
                 <run>
                     <model>import/cron::productsUpdate</model>
                 </run>
-            </MHSWSConnector_ProductsUpdate>-->
+            </MHSWSConnector_ProductsUpdate>
             <MHSWSConnector_StockUpdate>
                 <schedule>
                     <cron_expr>*/59 * * * *</cron_expr>
