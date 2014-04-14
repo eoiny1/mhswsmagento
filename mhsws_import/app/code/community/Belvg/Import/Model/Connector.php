@@ -417,6 +417,7 @@ class Belvg_Import_Model_Connector extends Mage_Core_Model_Abstract
         }
 
         $sProductSimple = Mage::getModel('catalog/product')->load($prod_id);
+
         $_attributeIds = array();
         if ($sProductSimple->getMhswsSize()) {
             $tmpAttribute = Mage::getSingleton('eav/config')->getAttribute('catalog_product', 'mhsws_size', 'attribute_id');
@@ -543,6 +544,11 @@ class Belvg_Import_Model_Connector extends Mage_Core_Model_Abstract
                                 )
                             );
                         }
+
+                        //Every Simple product that has a style is to be set to no-show (turned off) after the configurable products have been set.
+                        $tmpProductSimple = Mage::getModel('catalog/product')->load($simpleArray['id']);
+                        $tmpProductSimple->setVisibility(Mage_Catalog_Model_Product_Visibility::VISIBILITY_NOT_VISIBLE);
+                        $tmpProductSimple->save();
                     }
 
                     $sProduct->setConfigurableProductsData($dataArray);

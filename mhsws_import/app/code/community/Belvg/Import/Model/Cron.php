@@ -84,7 +84,6 @@ class Belvg_Import_Model_Cron
             } elseif($cache_data['waiting']) {
                 continue;
             } else {
-                $tmp_i++;
                 foreach ($cache_data['batch'] as $batch) {
                     $connector->updStock($batch->uid, $batch->qty);
                 }
