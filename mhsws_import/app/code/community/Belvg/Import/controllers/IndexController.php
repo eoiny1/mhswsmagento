@@ -39,7 +39,6 @@ class Belvg_Import_IndexController extends Mage_Core_Controller_Front_Action
         $cursor = $this->getRequest()->getParam('cursor');
         $connector = Mage::getModel('import/connector');
         $processes = Mage::getSingleton('index/indexer')->getProcessesCollection();
-
         if (empty($cursor)) {
             //set indexes to manual mode while importing the products
             $processes->walk('setMode', array(Mage_Index_Model_Process::MODE_MANUAL));

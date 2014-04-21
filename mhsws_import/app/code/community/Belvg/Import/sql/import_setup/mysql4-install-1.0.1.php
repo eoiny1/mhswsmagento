@@ -6,7 +6,7 @@ $installer->installEntities(); /*Belvg_Import_Model_Resource_Setup*/
 
 $attribute_set_name = 'Default';
 $group_name = 'General';
-$attribute_codes = array('mhsws_uid', 'mhsws_department', 'mhsws_cost', 'mhsws_style', 'mhsws_brand',
+$attribute_codes = array('mhsws_import', 'mhsws_uid', 'mhsws_department', 'mhsws_cost', 'mhsws_style', 'mhsws_brand',
     'mhsws_color', 'mhsws_size', 'mhsws_size2', 'mhsws_category', 'mhsws_fabric');
 /*foreach ($attribute_codes as $attribute_code) {
     $installer->removeAttribute('catalog_product', $attribute_code);

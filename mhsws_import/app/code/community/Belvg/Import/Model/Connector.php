@@ -284,7 +284,7 @@ class Belvg_Import_Model_Connector extends Mage_Core_Model_Abstract
                 ->setWebsiteIds(array(1)) //Mage::app()->getWebsite()->getId()
                 ->setVisibility(Mage_Catalog_Model_Product_Visibility::VISIBILITY_BOTH)
                 ->setTaxClassId(0)
-                ->setAttributeSetId(4)
+                ->setAttributeSetId($this->getAttributeSet())
                 ->setCategoryIds($cat_ids)
                 ->setShortDescription(isset($product->style) ? $product->style : '')
                 ->setWeight(0);
@@ -310,6 +310,7 @@ class Belvg_Import_Model_Connector extends Mage_Core_Model_Abstract
 
         $sProduct
             ->setStatus(Mage_Catalog_Model_Product_Status::STATUS_ENABLED)
+            ->setMhswsImport(1)
             ->setMhswsUid(isset($product->uid) ? $product->uid : '')
             ->setSku($product->plu_sku)
             ->setMhswsDepartment(isset($product->department) ? $product->department : '')
@@ -440,7 +441,7 @@ class Belvg_Import_Model_Connector extends Mage_Core_Model_Abstract
                 ->setWebsiteIds(array(1)) //Mage::app()->getWebsite()->getId()
                 ->setVisibility(Mage_Catalog_Model_Product_Visibility::VISIBILITY_BOTH)
                 ->setTaxClassId(0)
-                ->setAttributeSetId(4)
+                ->setAttributeSetId($this->getAttributeSet())
                 ->setCategoryIds($sProductSimple->getCategoryIds())
                 ->setShortDescription($sProductSimple->style)
                 ->setWeight(0)
@@ -457,6 +458,7 @@ class Belvg_Import_Model_Connector extends Mage_Core_Model_Abstract
 
         $sProduct
             ->setStatus(Mage_Catalog_Model_Product_Status::STATUS_ENABLED)
+            ->setMhswsImport(1)
             ->setSku($sku)
             ->setCategoryIds($sProductSimple->getCategoryIds());
 
@@ -486,6 +488,17 @@ class Belvg_Import_Model_Connector extends Mage_Core_Model_Abstract
             'attributes_array' => $attributes_array,
             'is_new' => $is_new,
         );
+    }
+
+    protected function getAttributeSet() { 
+        $attributeSetCollection = Mage::getResourceModel('eav/entity_attribute_set_collection') ->load();
+        $entityTypeId = 4; //default value for Magento 1.8.1.0
+        foreach ($attributeSetCollection as $id=>$attributeSet) {
+            $entityTypeId = $attributeSet->getEntityTypeId();
+            break;
+        }
+
+        return $entityTypeId;
     }
 
     public function importConfigurableProducts($limit) {
@@ -594,17 +607,29 @@ class Belvg_Import_Model_Connector extends Mage_Core_Model_Abstract
 
         $prod_ids = explode(chr(10), $contents);
 
-        $attributeModel = Mage::getModel('eav/entity_attribute')->loadByCode('catalog_product', 'status');
+        $statusModel = Mage::getModel('eav/entity_attribute')->loadByCode('catalog_product', 'status');
+        $mhswsImportModel = Mage::getModel('eav/entity_attribute')->loadByCode('catalog_product', 'mhsws_import');
         $resource = Mage::getSingleton('core/resource');
         $query = "
-            UPDATE `" . $resource->getTableName('catalog_product_entity_int') . "` at_status
-            JOIN `" . $resource->getTableName('catalog_product_entity') . "` e ON (
-              `at_status`.`entity_id` =  `e`.`entity_id`
-              AND `at_status`.`attribute_id` =  " . (int)$attributeModel->getId() . "
-              AND `at_status`.`store_id` = " . (int)Mage::app()->getStore()->getId() . "
+            UPDATE `" . $resource->getTableName('catalog_product_entity_int') . "` AS  `at_status`
+            JOIN  `" . $resource->getTableName('catalog_product_entity') . "` AS  `e` ON (  `at_status`.`entity_id` =  `e`.`entity_id` )
+            AND (
+            `at_status`.`attribute_id` =  '" . (int)$statusModel->getId() . "'
+            )
+            AND (
+            `at_status`.`store_id` = " . (int)Mage::app()->getStore()->getId() . "
+            )
+            INNER JOIN  `" . $resource->getTableName('catalog_product_entity_int') . "` AS  `at_mhsws_import` ON (  `at_mhsws_import`.`entity_id` =  `e`.`entity_id` )
+            AND (
+            `at_mhsws_import`.`attribute_id` =  '" . (int)$mhswsImportModel->getId() . "'
+            )
+            AND (
+            `at_mhsws_import`.`store_id` = " . (int)Mage::app()->getStore()->getId() . "
             )
             SET `at_status`.`value` = " . (int)Mage_Catalog_Model_Product_Status::STATUS_DISABLED . "
-            WHERE e.`entity_id` NOT IN (" . rtrim(implode(', ', $prod_ids), ', ') . ")";
+            WHERE
+            at_mhsws_import.value =  '1'
+            AND e.`entity_id` NOT IN (" . rtrim(implode(', ', $prod_ids), ', ') . ")";
 
         Mage::Log($query, NULL, 'mhsws_connector.log');
 
