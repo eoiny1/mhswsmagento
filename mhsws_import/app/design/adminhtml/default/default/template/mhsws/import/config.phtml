@@ -1,0 +1,162 @@
+<?php
+    //MHSWS Connector
+?>
+<button style="margin:10px" id="mhsws_import_button" type="button" class="scalable add" style="">
+    <span>
+        <span>Import</span>
+    </span>
+</button>
+<div id="mhsws_console" style="padding:10px 0 10px 0"></div>
+<div id="mhsws_log" style="padding-bottom:10px"></div>
+<script type="text/javascript" src="<?php echo Mage::getBaseUrl('js') ?>mhsws/jquery/jquery-1.8.2.min.js"></script>
+<script type="text/javascript" src="<?php echo Mage::getBaseUrl('js') ?>mhsws/jquery/jquery.noconflict.js"></script>
+<script>
+	(function($) {
+		//$('.form-buttons').hide();
+		
+		$('#mhsws_import_button').click(function() {
+			$('#mhsws_console').html('');
+			//$('#mhsws_import_button').hide();
+			$('#mhsws_import_button').attr('disabled', 'disabled').addClass('disabled');
+			runMhswsImport();
+		});
+
+        var runMhswsImport = function() {
+            var panel = $('<div>')
+                .attr('id', 'mhsws_panel')
+                .attr('style', 'padding:10px;background-color:#fff;border:1px solid #ddd;margin-bottom:7px;')
+                .html('<b>run...</b>');
+            $('#mhsws_console').append(panel);
+            var iteration = 0;
+
+            sendChromeAjaxQuery(iteration);
+
+            /* var product_list = sendAjaxQuery(iteration);
+            if (product_list.length == 0) {
+                $('#mhsws_panel').html('Data [batch] is empty!');
+                activateButton();
+                return false;
+            } else {
+                while (product_list.length > 0) {
+                    product_list = sendAjaxQuery(iteration++);
+
+                    if (product_list.length == 0) {
+                        $('#mhsws_panel').append('<br><b>Data was imported!</b>');
+                        activateButton();
+                        return false;
+                    } else {
+                        product_list.forEach(function(entry) {
+                            //console.log(entry);//////////////////////////////log/////////////////////////
+                            $('#mhsws_panel').append('<br><b>' + entry + '</b>');
+                            activateButton();
+                            return false;
+                        });
+                    }
+                }
+            } */
+        }
+
+        var sendAjaxQuery = function(iteration) {
+            var res = '';
+            $.ajax({
+                url: '<?php echo Mage::getUrl('import/index/product_list') ?>',
+                data: {iteration: iteration},
+                async: false,
+                success: function(data) {
+                    if (data == 'error') {
+                        $('#mhsws_panel').html('Error. Something went wrong!');
+                        return false;
+                    }
+
+                    res = $.parseJSON(data);
+                },
+                error: function(){
+                    $('#mhsws_panel').html('Ajax Error...');
+                }
+            });
+
+            return res;
+        }
+
+        var activateButton = function() {
+            $('#mhsws_import_button').removeAttr('disabled').removeClass('disabled');
+        }
+
+        var sendChromeAjaxQuery = function(iteration, cursor) {
+            $('#mhsws_panel').append('<br>-------------Iteration #' + iteration + '-------------');
+            $.ajax({
+                url: '<?php echo Mage::getUrl('import/index/product_list') ?>',
+                data: {iteration: iteration, cursor: cursor},
+                success: function(data) {
+                    jdata = $.parseJSON(data);
+                    if (jdata.error == 1) {
+                        $('#mhsws_panel').html('Error. Something went wrong!');
+
+                        showLog(jdata.log);
+
+                        activateButton();
+                        return false;
+                    } else {
+                        if (jdata.waiting == 1) {
+                            showLog(jdata.log);
+
+                            sendChromeAjaxQuery(iteration, jdata.cursor);
+                        } else {
+                            if (jdata.length == 0) {
+                                showLog(jdata.log);
+
+                                $('#mhsws_panel').append('<br>Data [batch] is empty!');
+
+                                configurableImport(1);
+
+                                /*activateButton();
+                                return false;*/
+                            } else {
+                                showLog(jdata.log);
+
+                                sendChromeAjaxQuery(++iteration, jdata.cursor);
+                            }
+                        }
+
+                    }
+                },
+                error: function(){
+                    $('#mhsws_panel').html('Ajax Error...');
+                }
+            });
+        }
+
+        var showLog = function (arr_log){
+            arr_log.forEach(function(entry) {
+                $('#mhsws_panel').append('<br><b>' + entry + '</b>');
+            });
+        }
+
+        var configurableImport = function (iteration){
+            $('#mhsws_panel').append('<br>-------------Configurable product Iteration #' + iteration + '-------------');
+            $.ajax({
+                url: '<?php echo Mage::getUrl('import/index/configurable_product') ?>',
+                data: {iteration: iteration},
+                success: function(data) {
+                    jdata = $.parseJSON(data);
+                    showLog(jdata.log);
+
+                    if (jdata.lenght == 0) {
+                        $('#mhsws_panel').append('<br>Configurable products import has done');
+
+                        activateButton();
+                        return false;
+                    } else {
+                        $('#mhsws_panel').append('<br> Lenght: ' + jdata.lenght);
+                        configurableImport(++iteration);
+                    }
+
+                },
+                error: function(){
+                    $('#mhsws_panel').html('Ajax Error [configurable import]...');
+                }
+            });
+        }
+
+	})(jQuery);
+</script>
