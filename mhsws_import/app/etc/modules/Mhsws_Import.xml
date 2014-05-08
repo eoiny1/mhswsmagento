@@ -5,7 +5,7 @@
         <Mhsws_Import>
             <active>true</active>
             <codePool>community</codePool>
-            <version>1.1.0</version>
+            <version>1.1.1</version>
         </Mhsws_Import>
     </modules>
 </config>

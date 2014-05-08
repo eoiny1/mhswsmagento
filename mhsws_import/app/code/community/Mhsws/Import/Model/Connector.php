@@ -284,7 +284,6 @@ class Mhsws_Import_Model_Connector extends Mage_Core_Model_Abstract
                 ->setWebsiteIds(array(1)) //Mage::app()->getWebsite()->getId()
                 ->setVisibility(Mage_Catalog_Model_Product_Visibility::VISIBILITY_BOTH)
                 ->setTaxClassId(0)
-                ->setAttributeSetId($this->getAttributeSet())
                 ->setCategoryIds($cat_ids)
                 ->setShortDescription(isset($product->style) ? $product->style : '')
                 ->setWeight(0);
@@ -320,6 +319,7 @@ class Mhsws_Import_Model_Connector extends Mage_Core_Model_Abstract
             ->setMhswsCategory(isset($product->category) ? $product->category : '')
             ->setMhswsStyle(isset($product->style) ? $product->style : '')
             //->setColor($product->color)
+            ->setAttributeSetId($this->getAttributeSet())
             ->setName(isset($product->name) ? $product->name : '-')
             ->setMsrp(isset($product->retail_price) ? $product->retail_price : 0)
             ->setPrice(isset($product->price) ? $product->price : 0);
@@ -491,14 +491,18 @@ class Mhsws_Import_Model_Connector extends Mage_Core_Model_Abstract
     }
 
     protected function getAttributeSet() { 
-        $attributeSetCollection = Mage::getResourceModel('eav/entity_attribute_set_collection') ->load();
-        $entityTypeId = 4; //default value for Magento 1.8.1.0
+        $attributeSetCollection = Mage::getResourceModel('eav/entity_attribute_set_collection')->load();
+		$typeId = Mage::getModel('catalog/product')->getResource()->getTypeId();
+		$attributeSetId = 4; //default for v.1.8
+
         foreach ($attributeSetCollection as $id=>$attributeSet) {
-            $entityTypeId = $attributeSet->getEntityTypeId();
-            break;
+			if ($attributeSet->getEntityTypeId() == $typeId) {
+				$attributeSetId = $attributeSet->getAttributeSetId();
+				break;
+			}
         }
 
-        return $entityTypeId;
+        return $attributeSetId;
     }
 
     public function importConfigurableProducts($limit) {
