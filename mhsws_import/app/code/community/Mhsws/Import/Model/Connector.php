@@ -6,6 +6,8 @@ class Mhsws_Import_Model_Connector extends Mage_Core_Model_Abstract
     const DOWNLOAD_PRODUCT_URL = "https://mhswsgen2rmsstackapi.appspot.com/cache/downloadproduct";
     const DATE_FORMAT = "Y-m-d H:i:s";
     const CONTEXT_LIVETIME = 10800; //in seconds = 3 hour {moved to module config}
+	
+	//const PARENT_CATEGORY_ID = 3;
 
     public $keyword = ''; //ilovetoronto
     public $access_identifier = ''; //d114301e8b56aac9791bdad9adc9dece
@@ -14,6 +16,8 @@ class Mhsws_Import_Model_Connector extends Mage_Core_Model_Abstract
     public $cursor;
 
     public $log = array();
+	
+	protected $_rootCategoryId;
 
     public function __construct() {
         $this->access_identifier = Mage::getStoreConfig('import/settings/access_identifier');
@@ -36,6 +40,8 @@ class Mhsws_Import_Model_Connector extends Mage_Core_Model_Abstract
             //generate new context
             $this->context = $this->buildCache();
         }
+		
+		$this->_rootCategoryId = Mage::app()->getWebsite(true)->getDefaultStore()->getRootCategoryId();
     }
 
     public function buildCache() {
@@ -197,7 +203,7 @@ class Mhsws_Import_Model_Connector extends Mage_Core_Model_Abstract
             if (is_object($department)) {
                 $parent_id = $department->getId();
             } else {
-                $department = $this->createCategory($product->department, Mage::getModel('catalog/category')->setPath('1/2'));
+                $department = $this->createCategory($product->department, Mage::getModel('catalog/category')->setPath('1/' . $this->_rootCategoryId));
                 $parent_id = $department->getId();
             }
         }
@@ -264,9 +270,9 @@ class Mhsws_Import_Model_Connector extends Mage_Core_Model_Abstract
         }
     }
 
-    public function saveProduct($product, $cat_ids = array(2)) {
+    public function saveProduct($product, $cat_ids = array()) {
         if (empty($cat_ids)) {
-            $cat_ids = array(2);
+            $cat_ids = array($this->_rootCategoryId);
         }
 
         if (!isset($product->plu_sku)) {
@@ -284,7 +290,8 @@ class Mhsws_Import_Model_Connector extends Mage_Core_Model_Abstract
                 ->setWebsiteIds(array(1)) //Mage::app()->getWebsite()->getId()
                 ->setVisibility(Mage_Catalog_Model_Product_Visibility::VISIBILITY_BOTH)
                 ->setTaxClassId(0)
-                ->setCategoryIds($cat_ids)
+                //->setAttributeSetId($this->getAttributeSet())
+                //->setCategoryIds($cat_ids)
                 ->setShortDescription(isset($product->style) ? $product->style : '')
                 ->setWeight(0);
 
@@ -319,10 +326,11 @@ class Mhsws_Import_Model_Connector extends Mage_Core_Model_Abstract
             ->setMhswsCategory(isset($product->category) ? $product->category : '')
             ->setMhswsStyle(isset($product->style) ? $product->style : '')
             //->setColor($product->color)
-            ->setAttributeSetId($this->getAttributeSet())
             ->setName(isset($product->name) ? $product->name : '-')
             ->setMsrp(isset($product->retail_price) ? $product->retail_price : 0)
-            ->setPrice(isset($product->price) ? $product->price : 0);
+            ->setPrice(isset($product->price) ? $product->price : 0)
+			->setAttributeSetId($this->getAttributeSet())
+			->setCategoryIds($cat_ids);
 
         if ($product->price < $product->retail_price) {
             $sProduct->setSpecialPrice($product->price);
@@ -369,6 +377,7 @@ class Mhsws_Import_Model_Connector extends Mage_Core_Model_Abstract
         }
 
         $sProduct->save();
+
         $this->saveLog('__' . $this->context, Mage::getBaseDir('var') . '/mhsws_export/', $sProduct->getId()); //needed for update product after import
 
         if (isset($product->style) && $product->style) {
@@ -420,18 +429,41 @@ class Mhsws_Import_Model_Connector extends Mage_Core_Model_Abstract
         $sProductSimple = Mage::getModel('catalog/product')->load($prod_id);
 
         $_attributeIds = array();
+		
+		$attrCodes = array();
+		
         if ($sProductSimple->getMhswsSize()) {
             $tmpAttribute = Mage::getSingleton('eav/config')->getAttribute('catalog_product', 'mhsws_size', 'attribute_id');
             $_attributeIds['mhsws_size'] = $tmpAttribute->getId();
+			$attrCodes[] = 'mhsws_size';
         }
         if ($sProductSimple->getMhswsColor()) {
             $tmpAttribute = Mage::getSingleton('eav/config')->getAttribute('catalog_product', 'mhsws_color', 'attribute_id');
             $_attributeIds['mhsws_color'] = $tmpAttribute->getId();
+			$attrCodes[] = 'mhsws_color';
         }
         if ($sProductSimple->getMhswsSize2()) {
             $tmpAttribute = Mage::getSingleton('eav/config')->getAttribute('catalog_product', 'mhsws_size2', 'attribute_id');
             $_attributeIds['mhsws_size2'] =  $tmpAttribute->getId();
+			$attrCodes[] = 'mhsws_size2';
         }
+
+		$newAttributes = array();
+		foreach($attrCodes as $attrCode){
+	 
+			$super_attribute= Mage::getModel('eav/entity_attribute')->loadByCode('catalog_product',$attrCode);
+			$configurableAtt = Mage::getModel('catalog/product_type_configurable_attribute')->setProductAttribute($super_attribute);
+	 
+			$newAttributes[] = array(
+			   'id'             => $configurableAtt->getId(),
+			   'label'          => $configurableAtt->getLabel(),
+			   'position'       => $super_attribute->getPosition(),
+			   'values'         => $configurableAtt->getPrices() ? $configProduct->getPrices() : array(),
+			   'attribute_id'   => $super_attribute->getId(),
+			   'attribute_code' => $super_attribute->getAttributeCode(),
+			   'frontend_label' => $super_attribute->getFrontend()->getLabel(),
+			);
+		}
 
         $is_new = empty($sProduct) ? 1 : 0;
         if ($is_new) {
@@ -464,7 +496,7 @@ class Mhsws_Import_Model_Connector extends Mage_Core_Model_Abstract
 
         $sProduct->setCanSaveConfigurableAttributes(TRUE);
         $sProduct->setCanSaveCustomOptions(TRUE);
-        $cProductTypeInstance = $sProduct->getTypeInstance();
+        /*$cProductTypeInstance = $sProduct->getTypeInstance();
         $cProductTypeInstance->setUsedProductAttributeIds($_attributeIds);
         $attributes_array = $cProductTypeInstance->getConfigurableAttributesAsArray();
         foreach($attributes_array as $key => $attribute_array) {
@@ -477,23 +509,25 @@ class Mhsws_Import_Model_Connector extends Mage_Core_Model_Abstract
             }
         }
         if ($is_new) {
-            $sProduct->setConfigurableAttributesData($attributes_array);
-        }
+            $sProduct->setConfigurableAttributesData($newAttributes);
+        }*/
 
         //$sProduct->save();
 
         return array(
             'configurableProduct' => $sProduct,
             'attributeIds' => $_attributeIds,
-            'attributes_array' => $attributes_array,
+            //'attributes_array' => $attributes_array,
             'is_new' => $is_new,
+			'attrCodes' => $attrCodes,
+			'newAttributes' => $newAttributes,
         );
     }
 
     protected function getAttributeSet() { 
         $attributeSetCollection = Mage::getResourceModel('eav/entity_attribute_set_collection')->load();
 		$typeId = Mage::getModel('catalog/product')->getResource()->getTypeId();
-		$attributeSetId = 4; //default for v.1.8
+		$attributeSetId = 9;
 
         foreach ($attributeSetCollection as $id=>$attributeSet) {
 			if ($attributeSet->getEntityTypeId() == $typeId) {
@@ -537,11 +571,12 @@ class Mhsws_Import_Model_Connector extends Mage_Core_Model_Abstract
 
                     $configurable_data = $this->__getConfigurableProduct($pathinfo['filename'], $prod_ids[0]);
                     $sProduct = $configurable_data['configurableProduct'];
-                    $attributes_array = $configurable_data['attributes_array'];
+                    $attributes_array = $configurable_data['newAttributes'];
                     $is_new = $configurable_data['is_new'];
 
                     $dataArray = array();
                     $productTypeIns = $sProduct->getTypeInstance(true);
+										
                     $childIds = $productTypeIns->getChildrenIds($sProduct->getId());  //There is an array of child products id
                     foreach($childIds as $childId) {
                         foreach($childId as $id) {
@@ -555,7 +590,7 @@ class Mhsws_Import_Model_Connector extends Mage_Core_Model_Abstract
                             array_push( $dataArray[$simpleArray['id']],
                                 array(
                                     "attribute_id" => $attrArray['attribute_id'],
-                                    "label" => $attrArray['label'],
+                                    "label" => $attrArray['frontend_label'],
                                     "is_percent" => false,
                                     "pricing_value" => 777
                                 )
@@ -569,7 +604,11 @@ class Mhsws_Import_Model_Connector extends Mage_Core_Model_Abstract
                     }
 
                     $sProduct->setConfigurableProductsData($dataArray);
+
                     if ($is_new) {
+					
+						$sProduct->setConfigurableAttributesData($configurable_data['newAttributes']);
+						
                         $sProduct->setStockData(
                             array(
                                 'use_config_manage_stock' => 1,
@@ -580,6 +619,7 @@ class Mhsws_Import_Model_Connector extends Mage_Core_Model_Abstract
                     }
 
                     $sProduct->save();
+
                     $this->saveLog('__' . $this->context, Mage::getBaseDir('var') . '/mhsws_export/', $sProduct->getId()); //needed for update product after import
 
                     $this->log[] = $pathinfo['filename'];
