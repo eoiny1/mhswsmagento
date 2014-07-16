@@ -11,6 +11,9 @@ class Mhsws_Import_Model_Observer {
     * event: sales_order_invoice_save_after
     */
     public function sendStockInfo($observer) {
+        if(Mage::registry('sales_order_invoice_save_after_observer_executed')){
+            return $this; 
+        }        
         $invoice = $observer->getEvent()->getInvoice();
         $connector = Mage::getModel('import/connector');
         $items = array();
@@ -36,7 +39,7 @@ class Mhsws_Import_Model_Observer {
             Mage::Log(print_r($url_params, TRUE), NULL, 'mhsws_invoice.log');
             Mage::Log($url, NULL, 'mhsws_invoice.log');
         }
-
+        Mage::register('sales_order_invoice_save_after_observer_executed',true); 
         return $this;
     }
 }
